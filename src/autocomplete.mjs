@@ -2,9 +2,9 @@ import { Controller } from 'stimulus'
 import debounce from 'lodash.debounce'
 
 export default class extends Controller {
-  static targets = [ 'input', 'hidden', 'results' ]
+  static targets = ['input', 'hidden', 'results']
 
-  connect() {
+  connect () {
     this.resultsTarget.hidden = true
 
     this.inputTarget.setAttribute('autocomplete', 'off')
@@ -25,7 +25,7 @@ export default class extends Controller {
     this.resultsTarget.addEventListener('click', this.onResultsClick)
   }
 
-  disconnect() {
+  disconnect () {
     this.inputTarget.removeEventListener('keydown', this.onKeydown)
     this.inputTarget.removeEventListener('focus', this.onInputFocus)
     this.inputTarget.removeEventListener('blur', this.onInputBlur)
@@ -34,7 +34,7 @@ export default class extends Controller {
     this.resultsTarget.removeEventListener('click', this.onResultsClick)
   }
 
-  sibling(next) {
+  sibling (next) {
     const options = Array.from(this.resultsTarget.querySelectorAll('[role="option"]'))
     const selected = this.resultsTarget.querySelector('[aria-selected="true"]')
     const index = options.indexOf(selected)
@@ -43,7 +43,7 @@ export default class extends Controller {
     return sibling || def
   }
 
-  select(target) {
+  select (target) {
     for (const el of this.resultsTarget.querySelectorAll('[aria-selected="true"]')) {
       el.removeAttribute('aria-selected')
       el.classList.remove('active')
@@ -53,7 +53,7 @@ export default class extends Controller {
     this.inputTarget.setAttribute('aria-activedescendant', target.id)
   }
 
-  onKeydown(event) {
+  onKeydown (event) {
     switch (event.key) {
       case 'Escape':
         if (!this.resultsTarget.hidden) {
@@ -96,12 +96,13 @@ export default class extends Controller {
     }
   }
 
-  onInputBlur() {
+  onInputBlur () {
     if (this.mouseDown) return
     this.resultsTarget.hidden = true
+    if (!this.hiddenTarget.value) this.inputTarget.value = ""
   }
 
-  commit(selected) {
+  commit (selected) {
     if (selected.getAttribute('aria-disabled') === 'true') return
 
     if (selected instanceof HTMLAnchorElement) {
@@ -110,11 +111,11 @@ export default class extends Controller {
       return
     }
 
-    const textValue = selected.textContent.trim()
+    const textValue = selected.firstElementChild ? selected.firstElementChild.textContent.trim() : selected.textContent.trim()
     const value = selected.getAttribute('data-autocomplete-value') || textValue
     this.inputTarget.value = textValue
 
-    if ( this.hasHiddenTarget ) {
+    if (this.hasHiddenTarget) {
       this.hiddenTarget.value = value
     } else {
       this.inputTarget.value = value
@@ -129,35 +130,35 @@ export default class extends Controller {
     }))
   }
 
-  onResultsClick(event) {
+  onResultsClick (event) {
     if (!(event.target instanceof Element)) return
     const selected = event.target.closest('[role="option"]')
     if (selected) this.commit(selected)
   }
 
-  onResultsMouseDown() {
+  onResultsMouseDown () {
     this.mouseDown = true
-    this.resultsTarget.addEventListener('mouseup', () => (this.mouseDown = false), {once: true})
+    this.resultsTarget.addEventListener('mouseup', () => (this.mouseDown = false), { once: true })
   }
 
-  onInputChange() {
-    this.element.removeAttribute('value')
+  onInputChange () {
+    this.hiddenTarget.removeAttribute('value')
     this.fetchResults()
   }
 
-  identifyOptions() {
+  identifyOptions () {
     let id = 0
     for (const el of this.resultsTarget.querySelectorAll('[role="option"]:not([id])')) {
       el.id = `${this.resultsTarget.id}-option-${id++}`
     }
   }
 
-  hideAndRemoveOptions() {
+  hideAndRemoveOptions () {
     this.resultsTarget.hidden = true
     this.resultsTarget.innerHTML = null
   }
 
-  fetchResults() {
+  fetchResults () {
     const query = this.inputTarget.value.trim()
     if (!query || query.length < this.minLength) {
       this.hideAndRemoveOptions()
@@ -168,7 +169,7 @@ export default class extends Controller {
 
     const url = new URL(this.src, window.location.href)
     const params = new URLSearchParams(url.search.slice(1))
-    params.append('q', query)
+    params.append(this.searchKey, query)
     url.search = params.toString()
 
     this.element.dispatchEvent(new CustomEvent('loadstart'))
@@ -189,28 +190,32 @@ export default class extends Controller {
       })
   }
 
-  open() {
+  open () {
     if (!this.resultsTarget.hidden) return
     this.resultsTarget.hidden = false
     this.element.setAttribute('aria-expanded', 'true')
-    this.element.dispatchEvent(new CustomEvent('toggle', {detail: {input: this.input, results: this.results}}))
+    this.element.dispatchEvent(new CustomEvent('toggle', { detail: { input: this.input, results: this.results } }))
   }
 
-  close() {
+  close () {
     if (this.resultsTarget.hidden) return
     this.resultsTarget.hidden = true
     this.inputTarget.removeAttribute('aria-activedescendant')
     this.element.setAttribute('aria-expanded', 'false')
-    this.element.dispatchEvent(new CustomEvent('toggle', {detail: {input: this.input, results: this.results}}))
+    this.element.dispatchEvent(new CustomEvent('toggle', { detail: { input: this.input, results: this.results } }))
   }
 
-  get src() {
+  get src () {
     return this.data.get("url")
   }
 
-  get minLength() {
+  get searchKey () {
+    return this.data.get("search") || 'q'
+  }
+
+  get minLength () {
     const minLength = this.data.get("min-length")
-    if ( !minLength ) {
+    if (!minLength) {
       return 0
     }
     return parseInt(minLength, 10)
